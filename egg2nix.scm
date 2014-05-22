@@ -20,7 +20,10 @@
 
 (define (egg-version egg)
   (if (list? egg)
-      (second egg)
+      (let ((v (second egg)))
+       (if (number? v)
+           (number->string v)
+           v))
       #f))
 
 (define known-versions '())
@@ -125,13 +128,7 @@
      (#t (any (cut version-newer? <> version) versions)))))
 
 (define (remove-older-duplicate-eggs eggs)
-
-  (let ((x (remove (cut egg-with-higher-version-in-list? <> eggs) eggs)))
-    (begin
-      (write "before: ") (write  eggs) (newline)
-      (write "after: ") (write x) (newline))
-    x))
-
+  (remove (cut egg-with-higher-version-in-list? <> eggs) eggs))
 
 (define (all-dependencies-internal egg acc)
   (let* ((name (egg-name egg))
