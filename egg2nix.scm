@@ -47,11 +47,11 @@
 (define (latest-version egg)
   (first (version-sort (all-versions (egg-name egg)) #f)))
 
+(define (update-version egg)
+  (list (string->symbol (egg-name egg)) (latest-version egg)))
+
 (define (local-egg-path egg)
-  (let ((x (string-append (temp-directory) (egg-name egg)
-                          "-"
-                          (or (egg-version egg) (latest-version egg))
-                          "/")))
+  (let ((x (string-append (temp-directory) (egg-name egg) "/")))
     (print (format "local egg path (~A): ~A" egg x))
     x))
 
@@ -128,41 +128,29 @@
      (#t (any (cut version-newer? <> version) versions)))))
 
 (define (remove-older-duplicate-eggs eggs)
-  (remove (cut egg-with-higher-version-in-list? <> eggs) eggs))
+  (delete-duplicates
+   (remove (cut egg-with-higher-version-in-list? <> eggs) eggs)))
 
-(define (all-dependencies-internal egg acc)
-  (let* ((name (egg-name egg))
-         (version (egg-version egg)))
-    ;; Don't collect deps if `name' is already in `acc'
-    (if (egg-in-list? egg acc)
-        acc
-        (begin
-          (print (string-append "collecting deps for " name " (" (or version "latest") ")"))
-          ;; Make sure egg `name' is downloaded
-          (if (egg-with-higher-version-in-list? egg acc)
-              acc
-              (begin
-                (retrieve-egg egg)
-                (let ((dependencies (egg-dependencies egg))
-                      ;; Add egg `name' to the accumulated list of deps
-                      (acc (cons egg acc)))
-                  ;; Leaf of the dep-tree
-                  (if (not dependencies)
-                      acc
-                      ;; Add all dependencies by folding over them. This
-                      ;; assures we don't load a dependency twice.
-                      (foldl (lambda (acc egg)
-                               (all-dependencies-internal egg acc))
-                             acc
-                             dependencies)))))))))
-
-(define (all-dependencies egg)
-  (let ((name (egg-name egg)))
-    (remove (lambda (egg) (equal? (egg-name egg) name))
-            (all-dependencies-internal egg '()))))
-
-(define (highest-version egg-name)
-  (first (version-sort (all-versions egg-name) #f)))
+(define (all-dependencies egg #!optional acc ignore-version)
+  (let* ((egg (if ignore-version (update-version egg) egg))
+         (name (egg-name egg))
+         (version (egg-version egg))
+         (acc (or acc '())))
+    ;; Only retrieve the egg once
+    (if (not (directory? (local-egg-path egg)))
+        (retrieve-egg egg))
+    (let ((dependencies (egg-dependencies egg))
+          ;; Add egg `name' to the accumulated list of deps
+          (acc (cons egg acc)))
+      ;; Leaf of the dep-tree
+      (if (not dependencies)
+          acc
+          ;; Add all dependencies by folding over them. This
+          ;; assures we don't load a dependency twice.
+          (foldl (lambda (acc egg)
+                   (all-dependencies egg acc #t))
+                 acc
+                 dependencies)))))
 
 (define (nix-deps-string deps)
   (string-append
@@ -177,7 +165,7 @@
          (version (or (egg-version egg)
                       (highest-version name)))
          (hash (nix-hash egg))
-         (deps (remove-older-duplicate-eggs (all-dependencies egg))))
+         (deps (egg-dependencies egg)))
     (format
      "
 ~A = eggDerivation {
@@ -203,7 +191,7 @@
 (define (collect-eggs spec)
   (let* ((eggs spec)
          (deps (map (lambda (egg)
-                      (all-dependencies egg))
+                      (all-dependencies egg eggs #f))
                     eggs))
          (all (foldl append eggs deps)))
     (remove-older-duplicate-eggs all)))
