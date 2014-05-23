@@ -5,6 +5,27 @@
 (use http-client)
 (use versions)
 
+(define chicken-egg-builtins
+  (map symbol->string '(scheme
+                        r4rs
+                        r5rs
+                        chicken
+                        extras
+                        data-structures
+                        ports
+                        lolevel
+                        posix
+                        ;; Note: This is included in newer chickens?
+                        ;; regex
+                        srfi-1
+                        srfi-4
+                        srfi-13
+                        srfi-14
+                        srfi-18
+                        srfi-69
+                        tcp
+                        utils)))
+
 (define always-use-latest-version-for-deps #t)
 
 (define (temp-directory)
@@ -101,8 +122,9 @@
 
 (define (egg-dependencies egg)
   (let ((meta (egg-meta egg)))
-    (append (cdr (or (assq 'depends meta) '(())))
-            (cdr (or (assq 'needs meta) '(()))))))
+    (remove (lambda (x) (member (egg-name x) chicken-egg-builtins))
+            (append (cdr (or (assq 'depends meta) '(())))
+                    (cdr (or (assq 'needs meta) '(())))))))
 
 
 (define (egg-in-list? egg lst #!optional name-only)
