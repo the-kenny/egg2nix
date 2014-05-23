@@ -163,7 +163,7 @@
   (print (format "nix-expression for ~A" egg))
   (let* ((name (egg-name egg))
          (version (or (egg-version egg)
-                      (highest-version name)))
+                      (latest-version name)))
          (hash (nix-hash egg))
          (deps (egg-dependencies egg)))
     (format
