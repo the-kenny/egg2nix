@@ -54,7 +54,6 @@
     (if known
         (cdr known)
         (begin
-          (print "loading versions...")
           (with-input-from-request
            (string-append "http://code.call-cc.org/cgi-bin/henrietta.cgi"
                           "?name=" egg-name
@@ -68,13 +67,11 @@
 (define (latest-version egg)
   (first (version-sort (all-versions (egg-name egg)) #f)))
 
-(define (update-version egg)
-  (list (string->symbol (egg-name egg)) (latest-version egg)))
+(define (update-version egg #!optional version)
+  (list (string->symbol (egg-name egg)) (or version (latest-version egg))))
 
 (define (local-egg-path egg)
-  (let ((x (string-append (temp-directory) (egg-name egg) "/")))
-    (print (format "local egg path (~A): ~A" egg x))
-    x))
+  (string-append (temp-directory) (egg-name egg) "/"))
 
 (define (chicken-install-retrieve egg)
   (let ((name (egg-name egg))
@@ -106,7 +103,8 @@
   (let ((name (egg-name egg))
         (version (egg-version egg)))
     (if version
-        (assert (member version (all-versions name))))
+        (assert (member version (all-versions name))
+                (format "Version ~A is not a valid version." version)))
     (let ((path (local-egg-path egg)))
       (if (not (directory? path))
           (let ((status (chicken-install-retrieve egg)))
@@ -181,8 +179,7 @@
                 "\n    ")
    "\n  ]"))
 
-(define (nix-expression egg)
-  (print (format "nix-expression for ~A" egg))
+(define (nix-expression egg #!optional native-deps)
   (let* ((name (egg-name egg))
          (version (or (egg-version egg)
                       (latest-version name)))
@@ -200,6 +197,7 @@
   };
 
   chickenDeps = ~A;
+  buildInputs = ~A;
 };
 "
      name
@@ -208,10 +206,42 @@
      name
      version
      hash
-     (nix-deps-string deps))))
+     (nix-deps-string deps)
+     (or (and native-deps (nix-deps-string native-deps)) "[ ]"))))
+
+(define (find-in-spec egg spec)
+  (find (lambda (spec-entry)
+          (equal? (egg-name egg)
+                  (egg-name
+                   (if (list? spec-entry)
+                       (first spec-entry)
+                       spec-entry))))
+        spec))
+
+(define (spec-native-dependencies entry)
+  (and (list? entry)
+       (alist-ref #:native-dependencies (cdr entry))))
+
+(define (spec-version entry)
+  (and (list? entry)
+       (car (alist-ref #:version (cdr entry) eqv? '(#f)))))
+
+(define (spec-name entry)
+  (if (list? entry)
+      (first entry)
+      entry))
+
+(define (spec->egg entry)
+  (let ((name (spec-name entry))
+        (version (spec-version entry)))
+    (if version
+        (assert (member version (all-versions (egg-name name)))))
+    (if version
+        (list name version)
+        name)))
 
 (define (collect-eggs spec)
-  (let* ((eggs spec)
+  (let* ((eggs (map spec->egg spec))
          (deps (map (lambda (egg)
                       (all-dependencies egg eggs #f))
                     eggs))
@@ -219,11 +249,23 @@
     (remove-older-duplicate-eggs all)))
 
 (define (nix-file spec)
+  (delete-directory (temp-directory) #t)
   (let* ((eggs (collect-eggs spec))
-         (expressions (map nix-expression eggs)))
+         (expressions (map (lambda (egg)
+                             (let* ((spec-entry (find-in-spec egg spec))
+                                    (native-deps (spec-native-dependencies spec-entry))
+                                    ;; (version (spec-version spec-entry))
+                                    )
+                               (nix-expression egg native-deps)))
+                           eggs)))
     (with-output-to-string
       (lambda ()
         (print "{ stdenv, chicken, fetchegg, pkgs, eggDerivation }:")
         (print "rec {")
         (map print expressions)
-        (print "}\n")))))
+        (print "}\n")
+        (delete-directory (temp-directory) #t)))))
+
+(print (nix-file (car (read-file "./chicken-deps.scm"))))
+
+
