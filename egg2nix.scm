@@ -196,7 +196,6 @@
     sha256 = \"~A\";
   };
 
-  chickenDeps = ~A;
   buildInputs = ~A;
 };
 "
@@ -206,8 +205,7 @@
      name
      version
      hash
-     (nix-deps-string deps)
-     (or (and native-deps (nix-deps-string native-deps)) "[ ]"))))
+     (nix-deps-string (append deps (or native-deps '()))))))
 
 (define (find-in-spec egg spec)
   (find (lambda (spec-entry)
@@ -260,8 +258,9 @@
                            eggs)))
     (with-output-to-string
       (lambda ()
-        (print "{ stdenv, chicken, fetchegg, pkgs, eggDerivation }:")
+        (print "{ pkgs, stdenv }:")
         (print "rec {")
+        (print "inherit (pkgs) eggDerivation fetchegg;")
         (map print expressions)
         (print "}\n")
         (delete-directory (temp-directory) #t)))))
