@@ -1,3 +1,5 @@
+#! csi -script
+
 (use posix)
 (use extras)
 (use srfi-1)
