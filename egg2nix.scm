@@ -267,6 +267,11 @@
         (print "}\n")
         (delete-directory (temp-directory) #t)))))
 
-(print (nix-file (car (read-file "./chicken-deps.scm"))))
+(match (command-line-arguments)
+  ((file)
+   (print (nix-file (car (read-file file)))))
+  (_
+   (print "Usage: egg2nix input.scm > output.nix")))
+
 
 
