@@ -94,9 +94,10 @@ exec csi -s "$0" "$@"
                      (if version
                          (string-append name ":" version)
                          name)))
-      (let ((ret (process-wait pid)))
+      (receive (_ normal-exit? exit-code)
+        (process-wait pid)
         (close-input-port in)
-        (zero? ret)))))
+        (and normal-exit? (zero? exit-code))))))
 
 (define (nix-hash egg)
   (let ((name (egg-name egg)))
