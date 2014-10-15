@@ -186,10 +186,10 @@ exec csi -s "$0" "$@"
 
 (define (nix-deps-string deps)
   (string-append
-   "[\n    "
+   "[\n      "
    (string-join (map egg-name deps)
-                "\n    ")
-   "\n  ]"))
+                "\n      ")
+   "\n    ]"))
 
 (define (find-in-spec egg spec)
   (find (lambda (spec-entry)
@@ -244,17 +244,17 @@ exec csi -s "$0" "$@"
          (deps (egg-dependencies egg)))
     (printf
      "
-~A = eggDerivation {
-  name = \"~A-~A\";
+  ~A = eggDerivation {
+    name = \"~A-~A\";
 
-  src = fetchegg {
-    name = \"~A\";
-    version = \"~A\";
-    sha256 = \"~A\";
+    src = fetchegg {
+      name = \"~A\";
+      version = \"~A\";
+      sha256 = \"~A\";
+    };
+
+    buildInputs = ~A;
   };
-
-  buildInputs = ~A;
-};
 "
      name
      name
