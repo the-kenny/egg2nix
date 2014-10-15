@@ -24,6 +24,7 @@ exec csi -s "$0" "$@"
                         ports
                         lolevel
                         posix
+                        files
                         ;; Note: This is included in newer chickens?
                         ;; regex
                         srfi-1
