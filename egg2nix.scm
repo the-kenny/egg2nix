@@ -25,6 +25,7 @@ exec csi -s "$0" "$@"
                         lolevel
                         posix
                         files
+                        foreign
                         ;; Note: This is included in newer chickens?
                         ;; regex
                         srfi-1
