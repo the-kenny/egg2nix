@@ -1,11 +1,18 @@
-#! csi -script
+#!/bin/sh
+#| -*- mode: scheme -*-
+exec csi -s "$0" "$@"
+|#
 
 (use posix)
 (use extras)
 (use srfi-1)
 (use matchable)
 (use http-client)
-(use versions)
+(use uri-common)
+(use intarweb)
+(use files)
+(use data-structures)
+(use setup-api)
 
 (define chicken-egg-builtins
   (map symbol->string '(scheme
@@ -17,6 +24,8 @@
                         ports
                         lolevel
                         posix
+                        files
+                        foreign
                         ;; Note: This is included in newer chickens?
                         ;; regex
                         srfi-1
@@ -28,46 +37,49 @@
                         tcp
                         utils)))
 
-(define always-use-latest-version-for-deps #t)
-
 (define (temp-directory)
   (let ((dir "/tmp/egg2nix/"))
-    (if (not (directory? dir))
-        (create-directory dir #t))
+    (unless (directory? dir)
+      (create-directory dir #t))
     dir))
 
 (define (egg-name egg)
-  (if (list? egg)
-      (symbol->string (first egg))
-      (if (string? egg) egg (symbol->string egg))))
+  (cond ((pair? egg)
+         (symbol->string (first egg)))
+        ((symbol? egg)
+         (symbol->string egg))
+        (else
+         egg)))
 
 (define (egg-version egg)
-  (if (list? egg)
-      (let ((v (second egg)))
-       (if (number? v)
-           (number->string v)
-           v))
-      #f))
+  (and (list? egg)
+       (let ((v (second egg)))
+         (if (number? v)
+             (number->string v)
+             v))))
+
+(define henrietta-uri
+  (uri-reference "http://code.call-cc.org/cgi-bin/henrietta.cgi"))
 
 (define known-versions '())
 
 (define (all-versions egg-name)
-  (let ((known (assoc egg-name known-versions)))
-    (if known
-        (cdr known)
-        (begin
-          (with-input-from-request
-           (string-append "http://code.call-cc.org/cgi-bin/henrietta.cgi"
-                          "?name=" egg-name
-                          "&listversions=1")
-           #f
-           (lambda ()
-             (let ((versions (string-split (read-string) "\n")))
-               (set! known-versions (cons (cons egg-name versions) known-versions))
-               versions)))))))
+  (or (alist-ref egg-name known-versions equal?)
+      (parameterize ((form-urlencoded-separator "&"))
+        ;; TODO: Add error handling
+        (call-with-input-request
+         (update-uri henrietta-uri query: `((name . ,egg-name)
+                                            (listversions . 1)))
+         #f
+         (lambda (in)
+           (let ((versions (string-split (read-string #f in) "\n")))
+             (set! known-versions (cons (cons egg-name versions) known-versions))
+             versions))))))
 
 (define (latest-version egg)
-  (first (version-sort (all-versions (egg-name egg)) #f)))
+  (and-let* ((versions (all-versions (egg-name egg)))
+             ((pair? versions)))
+    (first (sort versions version>=?))))
 
 (define (update-version egg #!optional version)
   (list (string->symbol (egg-name egg)) (or version (latest-version egg))))
@@ -78,53 +90,54 @@
 (define (chicken-install-retrieve egg)
   (let ((name (egg-name egg))
         (version (egg-version egg)))
-    (let-values (((in out pid)
-                  (process "chicken-install"
-                           (list "-retrieve"
-                                 (if version
-                                     (string-append name ":" version)
-                                     name)))))
-      (let ((ret (process-wait pid)))
-        (rename-file (string-append (temp-directory) name "/")
-                     (local-egg-path egg))
-        ret))))
+    (receive (in out pid)
+      (process "chicken-install"
+               (list "-retrieve"
+                     (if version
+                         (string-append name ":" version)
+                         name)))
+      (receive (_ normal-exit? exit-code)
+        (process-wait pid)
+        (close-input-port in)
+        (and normal-exit? (zero? exit-code))))))
 
 (define (nix-hash egg)
   (let ((name (egg-name egg)))
     (assert (directory? (local-egg-path egg)))
-    (let-values (((in out pid) (process "nix-hash"
-                                        (list "--base32"
-                                              "--type"
-                                              "sha256"
-                                              (local-egg-path egg)))))
-      (string-trim-right (read-string #f in)))))
+    (receive (in out pid)
+      (process "nix-hash"
+               (list "--base32"
+                     "--type"
+                     "sha256"
+                     (local-egg-path egg)))
+      (let ((hash (read-line in)))
+        (close-input-port in)
+        (close-output-port out)
+        hash))))
 
 (define (retrieve-egg egg)
   (change-directory (temp-directory))
   ;; Check if `version' is a valid release.
   (let ((name (egg-name egg))
         (version (egg-version egg)))
-    (if version
-        (assert (member version (all-versions name))
-                (format "Version ~A is not a valid version." version)))
+    (when version
+      (assert (member version (all-versions name))
+              (format "Version ~A is not a valid version." version)))
     (let ((path (local-egg-path egg)))
-      (if (not (directory? path))
-          (let ((status (chicken-install-retrieve egg)))
-            (if (= 0 status)
-                path))
-          path))))
+      (and (or (directory? path)
+               (chicken-install-retrieve egg))
+           path))))
 
 (define (egg-meta egg)
-  (let ((name (egg-name egg)))
-    (car
-     (read-file (string-append (local-egg-path egg)
-                               name ".meta")))))
+  (let* ((name (egg-name egg))
+         (meta-file (make-pathname (local-egg-path egg) name "meta")))
+    (call-with-input-file meta-file read)))
 
 (define (egg-dependencies egg)
   (let ((meta (egg-meta egg)))
     (remove (lambda (x) (member (egg-name x) chicken-egg-builtins))
-            (append (cdr (or (assq 'depends meta) '(())))
-                    (cdr (or (assq 'needs meta) '(())))))))
+            (append (or (alist-ref 'depends meta) '())
+                    (or (alist-ref 'needs meta) '())))))
 
 
 (define (egg-in-list? egg lst #!optional name-only)
@@ -147,7 +160,7 @@
     (cond
      ((member #f versions) #t)
      ((eq? #f version) #f)
-     (#t (any (cut version-newer? <> version) versions)))))
+     (else (any (cut version>=? <> version) versions)))))
 
 (define (remove-older-duplicate-eggs eggs)
   (delete-duplicates
@@ -158,9 +171,8 @@
          (name (egg-name egg))
          (version (egg-version egg))
          (acc (or acc '())))
-    ;; Only retrieve the egg once
-    (if (not (directory? (local-egg-path egg)))
-        (retrieve-egg egg))
+    ;; Only retrieves the same egg once
+    (retrieve-egg egg)
     (let ((dependencies (egg-dependencies egg))
           ;; Add egg `name' to the accumulated list of deps
           (acc (cons egg acc)))
@@ -176,38 +188,10 @@
 
 (define (nix-deps-string deps)
   (string-append
-   "[\n    "
+   "[\n      "
    (string-join (map egg-name deps)
-                "\n    ")
-   "\n  ]"))
-
-(define (nix-expression egg #!optional native-deps)
-  (let* ((name (egg-name egg))
-         (version (or (egg-version egg)
-                      (latest-version name)))
-         (hash (nix-hash egg))
-         (deps (egg-dependencies egg)))
-    (format
-     "
-~A = eggDerivation {
-  name = \"~A-~A\";
-
-  src = fetchegg {
-    name = \"~A\";
-    version = \"~A\";
-    sha256 = \"~A\";
-  };
-
-  buildInputs = ~A;
-};
-"
-     name
-     name
-     version
-     name
-     version
-     hash
-     (nix-deps-string (append deps (or native-deps '()))))))
+                "\n      ")
+   "\n    ]"))
 
 (define (find-in-spec egg spec)
   (find (lambda (spec-entry)
@@ -234,44 +218,66 @@
 (define (spec->egg entry)
   (let ((name (spec-name entry))
         (version (spec-version entry)))
-    (if version
-        (assert (member version (all-versions (egg-name name)))))
+    (when version
+      (assert (member version (all-versions (egg-name name)))))
     (if version
         (list name version)
         name)))
 
+(define (egg<? a b)
+  (string<? (egg-name a) (egg-name b)))
+
 (define (collect-eggs spec)
   (let* ((eggs (map spec->egg spec))
-         (deps (map (lambda (egg)
-                      (all-dependencies egg eggs #f))
-                    eggs))
-         (all (foldl append eggs deps)))
-    (remove-older-duplicate-eggs all)))
+         (deps (append-map (lambda (egg)
+                             (all-dependencies egg eggs #f))
+                           eggs))
+         (deps (remove-older-duplicate-eggs deps)))
+    (sort deps egg<?)))
 
-(define (nix-file spec)
+(define (write-nix-expression egg spec)
+  (let* ((spec-entry (find-in-spec egg spec))
+         (native-deps (spec-native-dependencies spec-entry))
+         (name (egg-name egg))
+         (version (or (egg-version egg)
+                      (latest-version name)))
+         ;; (version (spec-version spec-entry))
+         (hash (nix-hash egg))
+         (deps (egg-dependencies egg)))
+    (printf
+     "
+  ~A = eggDerivation {
+    name = \"~A-~A\";
+
+    src = fetchegg {
+      name = \"~A\";
+      version = \"~A\";
+      sha256 = \"~A\";
+    };
+
+    buildInputs = ~A;
+  };
+"
+     name
+     name
+     version
+     name
+     version
+     hash
+     (nix-deps-string (append deps (or native-deps '()))))))
+
+(define (write-nix-file spec)
   (delete-directory (temp-directory) #t)
-  (let* ((eggs (collect-eggs spec))
-         (expressions (map (lambda (egg)
-                             (let* ((spec-entry (find-in-spec egg spec))
-                                    (native-deps (spec-native-dependencies spec-entry))
-                                    ;; (version (spec-version spec-entry))
-                                    )
-                               (nix-expression egg native-deps)))
-                           eggs)))
-    (with-output-to-string
-      (lambda ()
-        (print "{ pkgs, stdenv }:")
-        (print "rec {")
-        (print "inherit (pkgs) eggDerivation fetchegg;")
-        (map print expressions)
-        (print "}\n")
-        (delete-directory (temp-directory) #t)))))
+  (let* ((eggs (collect-eggs spec)))
+    (print "{ pkgs, stdenv }:")
+    (print "rec {")
+    (print "inherit (pkgs) eggDerivation fetchegg;")
+    (for-each (lambda (egg) (write-nix-expression egg spec)) eggs)
+    (print "}\n")
+    (delete-directory (temp-directory) #t)))
 
 (match (command-line-arguments)
   ((file)
-   (print (nix-file (car (read-file file)))))
+   (write-nix-file (read-file file)))
   (_
    (print "Usage: egg2nix input.scm > output.nix")))
-
-
-

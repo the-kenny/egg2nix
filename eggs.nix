@@ -2,28 +2,13 @@
 rec {
 inherit (pkgs) eggDerivation fetchegg;
 
-versions = eggDerivation {
-  name = "versions-1.15";
+base64 = eggDerivation {
+  name = "base64-3.3.1";
 
   src = fetchegg {
-    name = "versions";
-    version = "1.15";
-    sha256 = "0qs9yq0jvz9cfd2vwvf1ya8wxxxqghhai57x0w3ywi0h4afbqivm";
-  };
-
-  buildInputs = [
-    eggdoc
-  ];
-};
-
-
-matchable = eggDerivation {
-  name = "matchable-3.3";
-
-  src = fetchegg {
-    name = "matchable";
-    version = "3.3";
-    sha256 = "07y3lpzgm4djiwi9y2adc796f9kwkmdr28fkfkw65syahdax8990";
+    name = "base64";
+    version = "3.3.1";
+    sha256 = "0wmldiwwg1jpcn07wb906nc53si5j7sa83wgyq643xzqcx4v4x1d";
   };
 
   buildInputs = [
@@ -31,6 +16,48 @@ matchable = eggDerivation {
   ];
 };
 
+blob-utils = eggDerivation {
+  name = "blob-utils-1.0.3";
+
+  src = fetchegg {
+    name = "blob-utils";
+    version = "1.0.3";
+    sha256 = "17vdn02fnxnjx5ixgqimln93lqvzyq4y9w02fw7xnbdcjzqm0xml";
+  };
+
+  buildInputs = [
+    setup-helper
+    string-utils
+  ];
+};
+
+check-errors = eggDerivation {
+  name = "check-errors-1.13.0";
+
+  src = fetchegg {
+    name = "check-errors";
+    version = "1.13.0";
+    sha256 = "12a0sn82n98jybh72zb39fdddmr5k4785xglxb16750fhy8rmjwi";
+  };
+
+  buildInputs = [
+    setup-helper
+  ];
+};
+
+defstruct = eggDerivation {
+  name = "defstruct-1.6";
+
+  src = fetchegg {
+    name = "defstruct";
+    version = "1.6";
+    sha256 = "0lsgl32nmb5hxqiii4r3292cx5vqh50kp6v062nfiyid9lhrj0li";
+  };
+
+  buildInputs = [
+    
+  ];
+};
 
 http-client = eggDerivation {
   name = "http-client-0.7.1";
@@ -51,127 +78,21 @@ http-client = eggDerivation {
   ];
 };
 
-
-sxml-transforms = eggDerivation {
-  name = "sxml-transforms-1.4.1";
+intarweb = eggDerivation {
+  name = "intarweb-1.3";
 
   src = fetchegg {
-    name = "sxml-transforms";
-    version = "1.4.1";
-    sha256 = "1igm3h1nm1i5mwm2akk105v5k96azjm1vnl637l3l5w2yycc76a2";
+    name = "intarweb";
+    version = "1.3";
+    sha256 = "0izlby78c25py29bdcbc0vapb6h7xgchqrzi6i51d0rb3mnwy88h";
   };
 
   buildInputs = [
-    
+    defstruct
+    uri-common
+    base64
   ];
 };
-
-
-eggdoc = eggDerivation {
-  name = "eggdoc-1.3.1";
-
-  src = fetchegg {
-    name = "eggdoc";
-    version = "1.3.1";
-    sha256 = "17ypr5sl2vnnzqxipybmjkm7d5wlsbp7fyq25qr6phgil8axafww";
-  };
-
-  buildInputs = [
-    sxml-transforms
-  ];
-};
-
-
-sendfile = eggDerivation {
-  name = "sendfile-1.7.29";
-
-  src = fetchegg {
-    name = "sendfile";
-    version = "1.7.29";
-    sha256 = "1dc02cbkx5kixhbqjy26g6gs680vy7krc9qis1p1v4aa0b2lgj7k";
-  };
-
-  buildInputs = [
-    
-  ];
-};
-
-
-setup-helper = eggDerivation {
-  name = "setup-helper-1.5.4";
-
-  src = fetchegg {
-    name = "setup-helper";
-    version = "1.5.4";
-    sha256 = "1k644y0md2isdcvazqfm4nyc8rh3dby6b0j3r4na4w8ryspqp6gj";
-  };
-
-  buildInputs = [
-    
-  ];
-};
-
-
-check-errors = eggDerivation {
-  name = "check-errors-1.13.0";
-
-  src = fetchegg {
-    name = "check-errors";
-    version = "1.13.0";
-    sha256 = "12a0sn82n98jybh72zb39fdddmr5k4785xglxb16750fhy8rmjwi";
-  };
-
-  buildInputs = [
-    setup-helper
-  ];
-};
-
-
-synch = eggDerivation {
-  name = "synch-2.1.2";
-
-  src = fetchegg {
-    name = "synch";
-    version = "2.1.2";
-    sha256 = "1m9mnbq0m5jsxmd1a3rqpwpxj0l1b7vn1fknvxycc047pmlcyl00";
-  };
-
-  buildInputs = [
-    setup-helper
-    check-errors
-  ];
-};
-
-
-record-variants = eggDerivation {
-  name = "record-variants-0.5.1";
-
-  src = fetchegg {
-    name = "record-variants";
-    version = "0.5.1";
-    sha256 = "15wgysxkm8m4hx9nhhw9akchzipdnqc7yj3qd3zn0z7sxg4sld1h";
-  };
-
-  buildInputs = [
-    
-  ];
-};
-
-
-miscmacros = eggDerivation {
-  name = "miscmacros-2.96";
-
-  src = fetchegg {
-    name = "miscmacros";
-    version = "2.96";
-    sha256 = "1ajdgjrni10i2hmhcp4rawnxajjxry3kmq1krdmah4sf0kjrgajc";
-  };
-
-  buildInputs = [
-    
-  ];
-};
-
 
 lookup-table = eggDerivation {
   name = "lookup-table-1.13.5";
@@ -191,56 +112,33 @@ lookup-table = eggDerivation {
   ];
 };
 
-
-string-utils = eggDerivation {
-  name = "string-utils-1.2.4";
+matchable = eggDerivation {
+  name = "matchable-3.3";
 
   src = fetchegg {
-    name = "string-utils";
-    version = "1.2.4";
-    sha256 = "07alvghg0dahilrm4jg44bndl0x69sv1zbna9l20cbdvi35i0jp1";
+    name = "matchable";
+    version = "3.3";
+    sha256 = "07y3lpzgm4djiwi9y2adc796f9kwkmdr28fkfkw65syahdax8990";
   };
 
   buildInputs = [
-    setup-helper
-    miscmacros
-    lookup-table
-    check-errors
+    
   ];
 };
 
-
-blob-utils = eggDerivation {
-  name = "blob-utils-1.0.3";
+md5 = eggDerivation {
+  name = "md5-3.1.0";
 
   src = fetchegg {
-    name = "blob-utils";
-    version = "1.0.3";
-    sha256 = "17vdn02fnxnjx5ixgqimln93lqvzyq4y9w02fw7xnbdcjzqm0xml";
+    name = "md5";
+    version = "3.1.0";
+    sha256 = "0bka43nx8x9b0b079qpvml2fl20km19ny0qjmhwzlh6rwmzazj2a";
   };
 
   buildInputs = [
-    setup-helper
-    string-utils
+    message-digest
   ];
 };
-
-
-variable-item = eggDerivation {
-  name = "variable-item-1.3.1";
-
-  src = fetchegg {
-    name = "variable-item";
-    version = "1.3.1";
-    sha256 = "19b3mhb8kr892sz9yyzq79l0vv28dgilw9cf415kj6aq16yp4d5n";
-  };
-
-  buildInputs = [
-    setup-helper
-    check-errors
-  ];
-};
-
 
 message-digest = eggDerivation {
   name = "message-digest-3.1.0";
@@ -261,29 +159,13 @@ message-digest = eggDerivation {
   ];
 };
 
-
-md5 = eggDerivation {
-  name = "md5-3.1.0";
-
-  src = fetchegg {
-    name = "md5";
-    version = "3.1.0";
-    sha256 = "0bka43nx8x9b0b079qpvml2fl20km19ny0qjmhwzlh6rwmzazj2a";
-  };
-
-  buildInputs = [
-    message-digest
-  ];
-};
-
-
-defstruct = eggDerivation {
-  name = "defstruct-1.6";
+miscmacros = eggDerivation {
+  name = "miscmacros-2.96";
 
   src = fetchegg {
-    name = "defstruct";
-    version = "1.6";
-    sha256 = "0lsgl32nmb5hxqiii4r3292cx5vqh50kp6v062nfiyid9lhrj0li";
+    name = "miscmacros";
+    version = "2.96";
+    sha256 = "1ajdgjrni10i2hmhcp4rawnxajjxry3kmq1krdmah4sf0kjrgajc";
   };
 
   buildInputs = [
@@ -291,22 +173,79 @@ defstruct = eggDerivation {
   ];
 };
 
-
-uri-generic = eggDerivation {
-  name = "uri-generic-2.41";
+record-variants = eggDerivation {
+  name = "record-variants-0.5.1";
 
   src = fetchegg {
-    name = "uri-generic";
-    version = "2.41";
-    sha256 = "1r5jbzjllbnmhm5n0m3fcx0g6dc2c2jzp1dcndkfmxz0cl99zxac";
+    name = "record-variants";
+    version = "0.5.1";
+    sha256 = "15wgysxkm8m4hx9nhhw9akchzipdnqc7yj3qd3zn0z7sxg4sld1h";
   };
 
   buildInputs = [
-    matchable
-    defstruct
+    
   ];
 };
 
+sendfile = eggDerivation {
+  name = "sendfile-1.7.29";
+
+  src = fetchegg {
+    name = "sendfile";
+    version = "1.7.29";
+    sha256 = "1dc02cbkx5kixhbqjy26g6gs680vy7krc9qis1p1v4aa0b2lgj7k";
+  };
+
+  buildInputs = [
+    
+  ];
+};
+
+setup-helper = eggDerivation {
+  name = "setup-helper-1.5.4";
+
+  src = fetchegg {
+    name = "setup-helper";
+    version = "1.5.4";
+    sha256 = "1k644y0md2isdcvazqfm4nyc8rh3dby6b0j3r4na4w8ryspqp6gj";
+  };
+
+  buildInputs = [
+    
+  ];
+};
+
+string-utils = eggDerivation {
+  name = "string-utils-1.2.4";
+
+  src = fetchegg {
+    name = "string-utils";
+    version = "1.2.4";
+    sha256 = "07alvghg0dahilrm4jg44bndl0x69sv1zbna9l20cbdvi35i0jp1";
+  };
+
+  buildInputs = [
+    setup-helper
+    miscmacros
+    lookup-table
+    check-errors
+  ];
+};
+
+synch = eggDerivation {
+  name = "synch-2.1.2";
+
+  src = fetchegg {
+    name = "synch";
+    version = "2.1.2";
+    sha256 = "1m9mnbq0m5jsxmd1a3rqpwpxj0l1b7vn1fknvxycc047pmlcyl00";
+  };
+
+  buildInputs = [
+    setup-helper
+    check-errors
+  ];
+};
 
 uri-common = eggDerivation {
   name = "uri-common-1.4";
@@ -324,38 +263,34 @@ uri-common = eggDerivation {
   ];
 };
 
-
-base64 = eggDerivation {
-  name = "base64-3.3.1";
+uri-generic = eggDerivation {
+  name = "uri-generic-2.41";
 
   src = fetchegg {
-    name = "base64";
-    version = "3.3.1";
-    sha256 = "0wmldiwwg1jpcn07wb906nc53si5j7sa83wgyq643xzqcx4v4x1d";
+    name = "uri-generic";
+    version = "2.41";
+    sha256 = "1r5jbzjllbnmhm5n0m3fcx0g6dc2c2jzp1dcndkfmxz0cl99zxac";
   };
 
   buildInputs = [
-    
-  ];
-};
-
-
-intarweb = eggDerivation {
-  name = "intarweb-1.3";
-
-  src = fetchegg {
-    name = "intarweb";
-    version = "1.3";
-    sha256 = "0izlby78c25py29bdcbc0vapb6h7xgchqrzi6i51d0rb3mnwy88h";
-  };
-
-  buildInputs = [
+    matchable
     defstruct
-    uri-common
-    base64
   ];
 };
 
-}
+variable-item = eggDerivation {
+  name = "variable-item-1.3.1";
 
+  src = fetchegg {
+    name = "variable-item";
+    version = "1.3.1";
+    sha256 = "19b3mhb8kr892sz9yyzq79l0vv28dgilw9cf415kj6aq16yp4d5n";
+  };
+
+  buildInputs = [
+    setup-helper
+    check-errors
+  ];
+};
+}
 

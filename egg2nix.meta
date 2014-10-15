@@ -1,0 +1,5 @@
+((synopsis "Generate nix-expression from CHICKEN eggs")
+ (author "Moritz Ulrich, Moritz Heidkamp")
+ (category tools)
+ (license "BSD")
+ (depends matchable http-client))
