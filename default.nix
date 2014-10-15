@@ -9,14 +9,6 @@ pkgs.eggDerivation {
 
   name = "egg2nix-0.1";
   buildInputs = with eggs; [
-    versions matchable http-client
+    matchable http-client
   ];
-
-  installPhase = ''
-    mkdir -p $out/bin/
-    mv egg2nix.scm $out/bin/egg2nix
-    chmod +x $out/bin/egg2nix
-
-    runHook postInstall #important - wraps the stuff in $out/bin/
-  '';
 }
