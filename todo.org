@@ -1,4 +1,4 @@
 - [ ] Hardcode path to `nix-hash'
 - [ ] Always use the latest version except when there's a version specified in the egg-list
 - [ ] Support reading the egg-list from stdin
-
+- [ ] Generate default.nix for non-egg CHICKEN apps
