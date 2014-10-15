@@ -271,7 +271,7 @@ exec csi -s "$0" "$@"
   (let* ((eggs (collect-eggs spec)))
     (print "{ pkgs, stdenv }:")
     (print "rec {")
-    (print "inherit (pkgs) eggDerivation fetchegg;")
+    (print "  inherit (pkgs) eggDerivation fetchegg;")
     (for-each (lambda (egg) (write-nix-expression egg spec)) eggs)
     (print "}\n")
     (delete-directory (temp-directory) #t)))
