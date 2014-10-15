@@ -277,6 +277,8 @@ exec csi -s "$0" "$@"
     (delete-directory (temp-directory) #t)))
 
 (match (command-line-arguments)
+  (("-")
+   (write-nix-file (read-file)))
   ((file)
    (write-nix-file (read-file file)))
   (_
