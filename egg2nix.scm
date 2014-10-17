@@ -261,6 +261,8 @@ exec csi -s "$0" "$@"
     (("-v" args ...)
      (set! verbose? #t)
      (loop args))
+    (("-")
+     (write-nix-file (read-file)))
     ((file)
      (write-nix-file (read-file file)))
     (_
