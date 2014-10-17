@@ -2,4 +2,4 @@
  (author "Moritz Ulrich, Moritz Heidkamp")
  (category tools)
  (license "BSD")
- (depends matchable http-client))
+ (depends matchable uri-common intarweb http-client))
