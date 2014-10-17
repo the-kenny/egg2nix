@@ -45,12 +45,13 @@ exec csi -s "$0" "$@"
     (newline (current-error-port))
     (flush-output (current-error-port))))
 
+(define *temp-dir* #f)
 
 (define (temp-directory)
-  (let ((dir "/tmp/egg2nix/"))
-    (unless (directory? dir)
-      (create-directory dir #t))
-    dir))
+  (or *temp-dir*
+      (begin
+        (set! *temp-dir* (string-append (create-temporary-directory) "/"))
+        *temp-dir*)))
 
 (define (egg-name egg)
   (cond ((pair? egg)
@@ -246,7 +247,6 @@ exec csi -s "$0" "$@"
      (nix-deps-string (append deps (or native-deps '()))))))
 
 (define (write-nix-file spec)
-  (delete-directory (temp-directory) #t)
   (let* ((spec (normalize-spec spec))
          (eggs+deps (collect-deps spec)))
     (print "{ pkgs, stdenv }:")
