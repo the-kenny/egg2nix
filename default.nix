@@ -7,7 +7,7 @@ in
 pkgs.eggDerivation {
   src = ./.;
 
-  name = "egg2nix-0.1";
+  name = "egg2nix-0.2";
   buildInputs = with eggs; [
     matchable http-client
   ];
