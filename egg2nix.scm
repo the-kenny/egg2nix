@@ -69,18 +69,18 @@ exec csi -s "$0" "$@"
              v))))
 
 (define henrietta-uri
-  (uri-reference "http://code.call-cc.org/cgi-bin/henrietta.cgi"))
+  "http://code.call-cc.org/cgi-bin/henrietta.cgi")
 
 (define known-versions '())
 
 (define (all-versions egg)
   (or (alist-ref egg known-versions)
-      (parameterize ((form-urlencoded-separator "&"))
-        ;; TODO: Add error handling
+      ;; TODO: Add error handling
+      (begin
         (info "Retrieving versions of ~a" egg)
         (call-with-input-request
-         (update-uri henrietta-uri query: `((name . ,(symbol->string egg))
-                                            (listversions . 1)))
+         ;; NOTE: We don't use proper URL encoding here because henrietta doesn't properly decode it either
+         (uri-reference (string-append henrietta-uri "?name=" (symbol->string egg) "&listversions=1"))
          #f
          (lambda (in)
            (let ((versions (string-split (read-string #f in) "\n")))
