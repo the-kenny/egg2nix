@@ -46,10 +46,11 @@ exec csi -s "$0" "$@"
     (newline (current-error-port))
     (flush-output (current-error-port))))
 
-(define *temp-dir* "/tmp/egg2nix/")
 (define *cache-dir* (string-append (current-directory)
                                    "/"
                                    (create-directory ".egg2nix-cache")))
+(define *temp-dir* (create-directory
+                    (string-append *cache-dir* "/eggs/")))
 
 (define (temp-directory)
   (create-directory
@@ -78,9 +79,8 @@ exec csi -s "$0" "$@"
 
 (define known-versions (or
                         (let ((f (string-append *cache-dir* "/known-versions")))
-                          (when (file-exists? f)
-                                (info "Reading cached versions from ~s" f)
-                                (call-with-input-file f read)))
+                          (info "Trying to read cached versions from ~s" f)
+                          (and (file-exists? f) (call-with-input-file f read)))
                         '()))
 
 (define (all-versions egg)
