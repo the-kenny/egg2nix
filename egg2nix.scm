@@ -200,7 +200,8 @@ exec csi -s "$0" "$@"
 
 (define (spec-native-dependencies entry)
   (and (pair? entry)
-       (alist-ref 'native-dependencies (cdr entry))))
+       (let ((x (alist-ref 'native-dependencies (cdr entry))))
+         (and (list? x) (car x)))))
 
 (define (spec-version entry)
   (and (pair? entry)
