@@ -22,6 +22,7 @@ exec csi -s "$0" "$@"
     extras
     data-structures
     ports
+    irregex
     lolevel
     posix
     files
@@ -160,10 +161,25 @@ exec csi -s "$0" "$@"
                       given-deps)
                 deps)))))
 
+(define (egg-name->attrname egg)
+  (let* ((name (egg-name egg))
+         (name (irregex-replace/all "\\+" name "-plus"))
+         (name (irregex-replace/all "^\\d+" name
+                                    (lambda (m)
+                                      (string-append
+                                       (string-intersperse 
+                                        (map (lambda (n)
+                                               (vector-ref '#("zero" "one" "two" "three" "four" "five" "six" "seven" "eight" "nine")
+                                                           (string->number (string n))))
+                                             (string->list (irregex-match-substring m)))
+                                        "-")
+                                       "-")))))
+    name))
+
 (define (nix-deps-string deps)
   (string-append
    "[\n      "
-   (string-join (map egg-name deps)
+   (string-join (map egg-name->attrname deps)
                 "\n      ")
    "\n    ]"))
 
@@ -238,7 +254,7 @@ exec csi -s "$0" "$@"
     buildInputs = ~A;
   };
 "
-     name
+     (egg-name->attrname name)
      name
      version
      name
