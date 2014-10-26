@@ -94,7 +94,11 @@ exec csi -s "$0" "$@"
     (first (sort versions version>=?))))
 
 (define (local-egg-path egg)
-  (string-append (temp-directory) (egg-name egg) "/"))
+  (string-append (temp-directory)
+                 (egg-name egg)
+                 "-" (or (egg-version egg)
+                         (latest-version egg))
+                 "/" ))
 
 (define (chicken-install-retrieve name version)
   (let ((name+version (if version
@@ -102,11 +106,13 @@ exec csi -s "$0" "$@"
                           name)))
     (info "Retrieving ~a" name+version)
     (receive (in out pid)
-      (process "chicken-install" (list "-retrieve" name+version))
-      (receive (_ normal-exit? exit-code)
-        (process-wait pid)
-        (close-input-port in)
-        (and normal-exit? (zero? exit-code))))))
+             (process "chicken-install" (list "-retrieve" name+version))
+             (receive (_ normal-exit? exit-code)
+                      (process-wait pid)
+                      (close-input-port in)
+                      (if (and normal-exit? (zero? exit-code))
+                          (rename-file name (string-append name "-" version))
+                          #t)))))
 
 (define (nix-hash egg)
   (let ((name (egg-name egg)))
