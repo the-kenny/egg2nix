@@ -46,13 +46,14 @@ exec csi -s "$0" "$@"
     (newline (current-error-port))
     (flush-output (current-error-port))))
 
-(define *temp-dir* #f)
+(define *temp-dir* "/tmp/egg2nix/")
 
 (define (temp-directory)
-  (or *temp-dir*
-      (begin
-        (set! *temp-dir* (string-append (create-temporary-directory) "/"))
-        *temp-dir*)))
+  (create-directory
+   (or *temp-dir*
+       (begin
+         (set! *temp-dir* (string-append (create-temporary-directory) "/"))
+         *temp-dir*))))
 
 (define (egg-name egg)
   (cond ((pair? egg)
@@ -275,8 +276,7 @@ exec csi -s "$0" "$@"
     (print "rec {")
     (print "  inherit (pkgs) eggDerivation fetchegg;")
     (for-each (lambda (egg+deps) (write-nix-expression egg+deps spec)) eggs+deps)
-    (print "}\n")
-    (delete-directory (temp-directory) #t)))
+    (print "}\n")))
 
 (let loop ((args (command-line-arguments)))
   (match args
