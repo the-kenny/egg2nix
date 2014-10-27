@@ -304,4 +304,4 @@ exec csi -s "$0" "$@"
     ((file)
      (write-nix-file (read-file file)))
     (_
-     (print "Usage: egg2nix input.scm > output.nix"))))
+     (print "Usage: egg2nix [-v] input.scm > output.nix"))))
