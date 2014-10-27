@@ -192,8 +192,9 @@ exec csi -s "$0" "$@"
    "\n    ]"))
 
 (define (spec-native-dependencies entry)
-  (and (pair? entry)
-       (or (alist-ref 'native-dependencies (cdr entry)) '())))
+  (or (and (pair? entry)
+           (alist-ref 'native-dependencies (cdr entry)))
+      '()))
 
 (define (spec-version entry)
   (and (pair? entry)
