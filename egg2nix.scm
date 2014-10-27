@@ -46,18 +46,11 @@ exec csi -s "$0" "$@"
     (newline (current-error-port))
     (flush-output (current-error-port))))
 
-(define *cache-dir* (string-append (current-directory)
-                                   "/"
+(define *cache-dir* (make-pathname (current-directory)
                                    (create-directory ".egg2nix-cache")))
+
 (define *temp-dir* (create-directory
                     (string-append *cache-dir* "/eggs/")))
-
-(define (temp-directory)
-  (create-directory
-   (or *temp-dir*
-       (begin
-         (set! *temp-dir* (string-append (create-temporary-directory) "/"))
-         *temp-dir*))))
 
 (define (egg-name egg)
   (cond ((pair? egg)
@@ -78,7 +71,7 @@ exec csi -s "$0" "$@"
   "http://code.call-cc.org/cgi-bin/henrietta.cgi")
 
 (define known-versions (or
-                        (let ((f (string-append *cache-dir* "/known-versions")))
+                        (let ((f (make-pathname *cache-dir* "known-versions")))
                           (info "Trying to read cached versions from ~s" f)
                           (and (file-exists? f) (call-with-input-file f read)))
                         '()))
@@ -103,7 +96,7 @@ exec csi -s "$0" "$@"
     (first (sort versions version>=?))))
 
 (define (local-egg-path egg)
-  (string-append (temp-directory)
+  (string-append *temp-dir*
                  (egg-name egg)
                  "-" (or (egg-version egg)
                          (latest-version egg))
@@ -138,7 +131,7 @@ exec csi -s "$0" "$@"
         hash))))
 
 (define (retrieve-egg egg version)
-  (change-directory (temp-directory))
+  (change-directory *temp-dir*)
   (let ((name (egg-name egg))
         (path (local-egg-path egg)))
     (and (or (directory? path)
@@ -200,8 +193,7 @@ exec csi -s "$0" "$@"
 
 (define (spec-native-dependencies entry)
   (and (pair? entry)
-       (let ((x (alist-ref 'native-dependencies (cdr entry))))
-         (and (list? x) (car x)))))
+       (or (alist-ref 'native-dependencies (cdr entry)) '())))
 
 (define (spec-version entry)
   (and (pair? entry)
@@ -276,7 +268,7 @@ exec csi -s "$0" "$@"
      name
      version
      hash
-     (nix-deps-string (append deps (or native-deps '()))))))
+     (nix-deps-string (append deps native-deps)))))
 
 (define (write-nix-file spec)
   (let* ((spec (normalize-spec spec))
