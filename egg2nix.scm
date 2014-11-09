@@ -196,6 +196,10 @@ exec csi -s "$0" "$@"
            (alist-ref 'native-dependencies (cdr entry)))
       '()))
 
+(define (spec-broken? entry)
+  (and (pair? entry)
+       (alist-ref 'broken (cdr entry))))
+
 (define (spec-version entry)
   (and (pair? entry)
        (car (alist-ref 'version (cdr entry) eqv? '(#f)))))
@@ -248,7 +252,8 @@ exec csi -s "$0" "$@"
                (egg-spec (assq egg spec))
                (native-deps (spec-native-dependencies egg-spec))
                (name (egg-name egg))
-               (hash (nix-hash egg)))
+               (hash (nix-hash egg))
+               (broken? (spec-broken? egg-spec)))
     (printf
      "
   ~A = eggDerivation {
@@ -260,7 +265,7 @@ exec csi -s "$0" "$@"
       sha256 = \"~A\";
     };
 
-    buildInputs = ~A;
+    buildInputs = ~A;~A
   };
 "
      (egg-name->attrname name)
@@ -269,7 +274,8 @@ exec csi -s "$0" "$@"
      name
      version
      hash
-     (nix-deps-string (append deps native-deps)))))
+     (nix-deps-string (append deps native-deps))
+     (if broken? "\n    meta.broken = true;" ""))))
 
 (define (write-nix-file spec)
   (let* ((spec (normalize-spec spec))
