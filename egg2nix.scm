@@ -113,7 +113,10 @@ exec csi -s "$0" "$@"
                       (process-wait pid)
                       (close-input-port in)
                       (if (and normal-exit? (zero? exit-code))
-                          (rename-file name (string-append name "-" version))
+                          (let ((dir (string-append name "-" version)))
+                            (when (directory-exists? dir)
+                                  (delete-directory dir #t))
+                            (rename-file name dir))
                           #t)))))
 
 (define (nix-hash egg)
