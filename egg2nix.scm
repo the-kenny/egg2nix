@@ -54,11 +54,14 @@ exec csi -s "$0" "$@"
     (newline (current-error-port))
     (flush-output (current-error-port))))
 
-(define *cache-dir* (make-pathname (current-directory)
-                                   (create-directory ".egg2nix-cache")))
+(define *cache-dir*
+  (make-pathname
+   (current-directory)
+   (create-directory ".egg2nix-cache")))
 
-(define *temp-dir* (create-directory
-                    (string-append *cache-dir* "/eggs/")))
+(define *temp-dir*
+  (create-directory
+   (string-append *cache-dir* "/eggs/")))
 
 (define-record-type egg
   (%make-egg name name-string version deps extra-deps broken?)
