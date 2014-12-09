@@ -3,4 +3,4 @@
 (install-program
  'egg2nix
  '("egg2nix")
- '((version "0.4")))
+ '((version "0.5")))
