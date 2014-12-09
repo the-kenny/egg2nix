@@ -262,19 +262,15 @@ exec csi -s "$0" "$@"
   (string<? (egg-name-string a) (egg-name-string b)))
 
 (define (collect-deps eggs)
-  (sort (fold (lambda (egg eggs)
-                (all-dependencies egg eggs))
-              eggs
-              eggs)
-        egg<?))
+  (sort (fold all-dependencies eggs eggs) egg<?))
 
 (define (write-nix-expression egg)
-  (match-let* ((name (egg-name egg))
-               (version (egg-version egg))
-               (deps (or (egg-deps egg) '()))
-               (extra-deps (or (egg-extra-deps egg) '()))
-               (hash (nix-hash egg))
-               (broken? (egg-broken? egg)))
+  (let* ((name (egg-name egg))
+         (version (egg-version egg))
+         (deps (or (egg-deps egg) '()))
+         (extra-deps (or (egg-extra-deps egg) '()))
+         (hash (nix-hash egg))
+         (broken? (egg-broken? egg)))
     (printf
      "
   ~A = eggDerivation {
