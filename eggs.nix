@@ -2,6 +2,20 @@
 rec {
   inherit (pkgs) eggDerivation fetchegg;
 
+  args = eggDerivation {
+    name = "args-1.4.4";
+
+    src = fetchegg {
+      name = "args";
+      version = "1.4.4";
+      sha256 = "1m2sz4g1g44miw8bw2gpqd7wxhq16iw5bncd4w3463rc066brq29";
+    };
+
+    buildInputs = [
+      srfi-37
+    ];
+  };
+
   base64 = eggDerivation {
     name = "base64-3.3.1";
 
@@ -208,6 +222,20 @@ rec {
       name = "setup-helper";
       version = "1.5.4";
       sha256 = "1k644y0md2isdcvazqfm4nyc8rh3dby6b0j3r4na4w8ryspqp6gj";
+    };
+
+    buildInputs = [
+      
+    ];
+  };
+
+  srfi-37 = eggDerivation {
+    name = "srfi-37-1.3.1";
+
+    src = fetchegg {
+      name = "srfi-37";
+      version = "1.3.1";
+      sha256 = "1a2zdkdzrv15fw9dfdy8067fsgh4kr8ppffm8mc3cmlczrrd58cb";
     };
 
     buildInputs = [

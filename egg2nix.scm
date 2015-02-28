@@ -21,6 +21,8 @@ exec csi -s "$0" "$@"
 (use data-structures)
 (use setup-api)
 (use irregex)
+(use args)
+(use ports)
 
 (define chicken-egg-builtins
   '(scheme
@@ -310,16 +312,33 @@ exec csi -s "$0" "$@"
           (info "writing versions to cache at ~s" f)
           (write known-versions out))))))
 
-(let loop ((args (command-line-arguments)))
-  (match args
-    (("-v" args ...)
-     (set! verbose? #t)
-     (loop args))
-    (("-")
-     (write-nix-file (read-file)))
-    ((file)
-     (write-nix-file (read-file file)))
-    (_
-     (print "Usage: egg2nix [-v] input.scm > output.nix"))))
+(define (usage)
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (print "Usage: " (car (argv)) " [-v] input.scm > output.nix")
+      (newline)
+      (print (args:usage opts))
+      (print "Report bugs to moritz@tarn-vedra.de")))
+  (exit 1))
+
+(define opts
+  (list (args:make-option
+         (v verbose) #:none "Verbose logging"
+         (set! verbose? #t))
+        (args:make-option
+         (h help) #:none "Display this text"
+         (usage))))
+
+(receive (options operands)
+         (args:parse (command-line-arguments) opts)
+         (match operands
+                (("-")
+                 (write-nix-file (read-file)))
+                ((file)
+                 (write-nix-file (read-file file)))
+                (_
+                 (usage))))
+
+
 
 )
