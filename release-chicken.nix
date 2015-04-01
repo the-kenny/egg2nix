@@ -7,5 +7,6 @@
 
 with (import <nixpkgs/pkgs/top-level/release-lib.nix> { inherit supportedSystems; });
 mapTestOn {
+  chicken = { type = "job"; systems = [ supportedSystems ]; schedulingPriority = 4; };  
   chickenEggs = packagePlatforms pkgs.chickenEggs;
 }
