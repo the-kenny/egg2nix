@@ -1,6 +1,7 @@
 /* Build instructions for the continuous integration system Hydra. */
 
 { egg2nix ? { outPath = ../egg2nix; revCount = 0; gitTag = "dirty"; }
+, supportedSystems ? [ "x86_64-linux" "i686-linux" "x86_64-darwin" "x86_64-freebsd" "i686-freebsd" ]
 }:
 
 let
@@ -9,14 +10,7 @@ let
   versionSuffix = "";
 in
 rec {
-
-  # tarball = pkgs.releaseTools.sourceTarball {
-  #   name = "egg2nix-tarball";
-  #   src = egg2nix;
-  #   inherit version versionSuffix;
-  # };
-
-  build = pkgs.lib.genAttrs [ "x86_64-linux" ] (system:
+  build = pkgs.lib.genAttrs supportedSystems (system:
     let
       pkgs = import <nixpkgs> { inherit system; }; 
     in
