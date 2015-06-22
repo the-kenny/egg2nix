@@ -6,13 +6,11 @@
 
 let
   pkgs = import nixpkgs { };
-  version = egg2nix.gitTag;
-  versionSuffix = "";
 in
 rec {
   build = pkgs.lib.genAttrs supportedSystems (system:
     let
-      pkgs = import <nixpkgs> { inherit system; }; 
+      pkgs = import nixpkgs { inherit system; }; 
     in
     pkgs.callPackage (import ./default.nix) {});
 }
