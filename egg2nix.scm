@@ -7,46 +7,30 @@ exec csi -s "$0" "$@"
 
 ()
 
-(import chicken)
 (import scheme)
 (import matchable)
 
-(use posix)
-(use extras)
-(use srfi-1)
-(use http-client)
-(use uri-common)
-(use intarweb)
-(use files)
-(use data-structures)
-(use setup-api)
-(use irregex)
-(use args)
-(use ports)
+(import chicken.base)
+(import chicken.file)
+(import chicken.format)
+(import chicken.io)
+(import chicken.irregex)
+(import chicken.port)
+(import chicken.process-context)
+(import chicken.sort)
+(import chicken.string)
+(import chicken.file.posix)
+(import chicken.process)
+(import chicken.pathname)
+
+(import srfi-1)
+(import args)
 
 (define chicken-egg-builtins
   '(scheme
     r4rs
     r5rs
-    chicken
-    extras
-    data-structures
-    ports
-    irregex
-    lolevel
-    posix
-    files
-    foreign
-    ;; Note: This is included in newer chickens?
-    ;; regex
-    srfi-1
-    srfi-4
-    srfi-13
-    srfi-14
-    srfi-18
-    srfi-69
-    tcp
-    utils))
+    srfi-4))
 
 (define verbose? #f)
 
@@ -59,11 +43,13 @@ exec csi -s "$0" "$@"
 (define *cache-dir*
   (make-pathname
    (current-directory)
-   (create-directory ".egg2nix-cache")))
+   (create-directory ".egg2nix-cache-5")))
 
 (define *temp-dir*
   (create-directory
    (string-append *cache-dir* "/eggs/")))
+
+(set-environment-variable! "CHICKEN_EGG_CACHE" *temp-dir*)
 
 (define-record-type egg
   (%make-egg name name-string version deps extra-deps broken?)
@@ -87,9 +73,6 @@ exec csi -s "$0" "$@"
     (write version out))
   (display ">" out))
 
-(define henrietta-uri
-  "http://code.call-cc.org/cgi-bin/henrietta.cgi")
-
 (define known-versions
   (let ((f (make-pathname *cache-dir* "known-versions")))
     (info "Trying to read cached versions from ~s" f)
@@ -102,14 +85,38 @@ exec csi -s "$0" "$@"
       ;; TODO: Add error handling
       (begin
         (info "Retrieving versions of ~a" egg-name)
-        (call-with-input-request
-         ;; NOTE: We don't use proper URL encoding here because henrietta doesn't properly decode it either
-         (uri-reference (string-append henrietta-uri "?name=" (symbol->string egg-name) "&listversions=1"))
-         #f
-         (lambda (in)
-           (let ((versions (string-split (read-string #f in) "\n")))
-             (set! known-versions (cons (cons egg-name versions) known-versions))
-             versions))))))
+        (receive (in out pid)
+            (process "chicken-install"
+                     (list "-list-versions" (symbol->string egg-name)))
+          (let ((versions (cdr (string-split (read-line in) " "))))
+            (close-input-port out)
+            (receive (_ normal-exit? exit-code)
+                (process-wait pid)
+              (if (and normal-exit? (zero? exit-code))
+                  (begin
+                    (set! known-versions
+                      (cons (cons egg-name versions) known-versions))
+                    versions)
+                  (error "list-versions failed"))))))))
+
+(define (version>=? v1 v2)
+  (define (version->list v)
+    (map (lambda (x) (or (string->number x) x))
+	       (irregex-split "[-\\._]" (->string v))))
+  (let loop ((p1 (version->list v1))
+	           (p2 (version->list v2)))
+    (cond ((null? p1) (null? p2))
+	        ((null? p2))
+	        ((number? (car p1))
+	         (and (number? (car p2))
+		            (or (> (car p1) (car p2))
+		                (and (= (car p1) (car p2))
+			                   (loop (cdr p1) (cdr p2))))))
+	        ((number? (car p2)))
+	        ((string>? (car p1) (car p2)))
+	        (else
+	         (and (string=? (car p1) (car p2))
+		            (loop (cdr p1) (cdr p2)))))))
 
 (define (latest-version egg-name)
   (and-let* ((versions (all-versions egg-name))
@@ -120,8 +127,11 @@ exec csi -s "$0" "$@"
   (string-append *temp-dir*
                  (egg-name-string egg)
                  "-" (or (egg-version egg)
-                         (latest-version egg))
+                         (latest-version (egg-name egg)))
                  "/" ))
+
+(define egg-meta-files
+  '("STATUS" "TIMESTAMP"))
 
 (define (chicken-install-retrieve name version)
   (let ((name+version (if version
@@ -137,7 +147,11 @@ exec csi -s "$0" "$@"
                           (let ((dir (string-append name "-" version)))
                             (when (directory-exists? dir)
                                   (delete-directory dir #t))
-                            (rename-file name dir))
+                            (rename-file name dir)
+                            (map (lambda (n)
+                                   (delete-file
+                                    (make-pathname dir n)))
+                                 egg-meta-files))
                           #t)))))
 
 (define (nix-hash egg)
@@ -161,7 +175,7 @@ exec csi -s "$0" "$@"
 (define (egg-meta egg)
   (let ((meta-file (make-pathname (local-egg-path egg)
                                   (egg-name-string egg)
-                                  "meta")))
+                                  "egg")))
     (call-with-input-file meta-file read)))
 
 (define (egg-ref name eggs)
@@ -173,8 +187,7 @@ exec csi -s "$0" "$@"
   (let ((meta (egg-meta egg)))
     (remove (lambda (dep) (member dep chicken-egg-builtins))
             (map spec-name
-                 (append (or (alist-ref 'depends meta) '())
-                         (or (alist-ref 'needs meta) '()))))))
+                 (or (alist-ref 'dependencies meta) '())))))
 
 (define (all-dependencies egg eggs)
   (retrieve-egg egg)
@@ -333,9 +346,9 @@ exec csi -s "$0" "$@"
          (args:parse (command-line-arguments) opts)
          (match operands
                 (("-")
-                 (write-nix-file (read-file)))
+                 (write-nix-file (read-list)))
                 ((file)
-                 (write-nix-file (read-file file)))
+                 (write-nix-file (call-with-input-file file read-list)))
                 (_
                  (usage))))
 

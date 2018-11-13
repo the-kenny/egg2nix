@@ -2,4 +2,5 @@
  (author "Moritz Ulrich, Moritz Heidkamp")
  (category tools)
  (license "BSD")
- (depends matchable uri-common intarweb http-client))
+ (dependencies args matchable)
+ (components (program egg2nix)))

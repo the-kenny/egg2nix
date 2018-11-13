@@ -1,6 +1,0 @@
-(compile -d2 -O2 egg2nix.scm)
-
-(install-program
- 'egg2nix
- '("egg2nix")
- '((version "0.5")))
