@@ -8,7 +8,7 @@ rec {
     src = fetchegg {
       name = "args";
       version = "1.6.0";
-      sha256 = "1dvzdr7sdpfbc8nnzd1hc3wy7pw9plnbbz5b0skz4p96phqxm803";
+      sha256 = "1y9sznh4kxqxvhd8k44bjx0s7xspp52sx4bn8i8i0f8lwch6r2g4";
     };
 
     buildInputs = [
@@ -24,7 +24,7 @@ rec {
     src = fetchegg {
       name = "matchable";
       version = "1.0";
-      sha256 = "0k2bd5qkcyb3l3gw87g6fx7wyqzb2yvwnlqr5a87nxn9mvqjbg8f";
+      sha256 = "01vy2ppq3sq0wirvsvl3dh0bwa5jqs1i6rdjdd7pnwj4nncxd1ga";
     };
 
     buildInputs = [
@@ -38,7 +38,7 @@ rec {
     src = fetchegg {
       name = "srfi-1";
       version = "0.5";
-      sha256 = "1x78kld3vn9fbnjhk63l7la48fafa6z2nya82mw0k5wnrlfj8c31";
+      sha256 = "0gh1h406xbxwm5gvc5znc93nxp9xjbhyqf7zzga08k5y6igxrlvk";
     };
 
     buildInputs = [
@@ -52,7 +52,7 @@ rec {
     src = fetchegg {
       name = "srfi-13";
       version = "0.2";
-      sha256 = "03hpgx2drwqxk1n3113q6vpj9d8h08df9sq8n3yhfpw37h6zqvxx";
+      sha256 = "0jazbdnn9bjm7wwxqq7xzqxc9zfvaapq565rf1czj6ayl96yvk3n";
     };
 
     buildInputs = [
@@ -66,7 +66,7 @@ rec {
     src = fetchegg {
       name = "srfi-14";
       version = "0.2";
-      sha256 = "0lddw35p1z9fsk6nhn93lj1ljmwx0fjw1yr8g7djw3pk489zjv5b";
+      sha256 = "13nm4nn1d52nkvhjizy26z3s6q41x1ml4zm847xzf86x1zwvymni";
     };
 
     buildInputs = [
@@ -80,7 +80,7 @@ rec {
     src = fetchegg {
       name = "srfi-37";
       version = "1.4";
-      sha256 = "1liiw2gds3f6b8bwl2qgai9aavz5yl9kvkfs1sh2f27a6r07qzia";
+      sha256 = "17f593497n70gldkj6iab6ilgryiqar051v6azn1szhnm1lk7dwd";
     };
 
     buildInputs = [

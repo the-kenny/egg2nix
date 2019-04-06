@@ -5,7 +5,8 @@ exec csi -s "$0" "$@"
 
 (module egg2nix
 
-()
+(locate-egg-file
+ read-dependencies)
 
 (import scheme)
 (import matchable)
@@ -184,10 +185,13 @@ exec csi -s "$0" "$@"
         eggs))
 
 (define (egg-dependencies egg)
-  (let ((meta (egg-meta egg)))
-    (remove (lambda (dep) (member dep chicken-egg-builtins))
-            (map spec-name
-                 (or (alist-ref 'dependencies meta) '())))))
+  (egg-meta-dependencies (egg-meta egg)))
+
+(define (egg-meta-dependencies meta)
+    (remove (lambda (dep)
+              (memq (spec-name dep) chicken-egg-builtins))
+            (append (alist-ref 'dependencies meta eq? '())
+                    (alist-ref 'build-dependencies meta eq? '()))))
 
 (define (all-dependencies egg eggs)
   (retrieve-egg egg)
@@ -325,14 +329,39 @@ exec csi -s "$0" "$@"
           (info "writing versions to cache at ~s" f)
           (write known-versions out))))))
 
-(define (usage)
+(define (egg-meta? expr)
+  (and (pair? expr) (every pair? expr) (assq 'components expr) #t))
+
+(define (read-dependencies #!optional (source (current-input-port)))
+  (let ((expr (read source)))
+    (cond ((eof-object? expr) '())
+          ((egg-meta? expr)
+           (egg-meta-dependencies expr))
+          (else
+           (cons expr (read-list source))))))
+
+(define (locate-egg-file #!optional (source (current-directory)))
+  (cond ((regular-file? source) source)
+        ((directory? source)
+         (let ((eggs (glob (make-pathname source "*.egg")
+                           (make-pathname source "chicken/*.egg"))))
+           (when (null? eggs)
+             (error "Egg file not found" source))
+           (when (> (length eggs) 1)
+             (error "Multiple egg files found, please specify one"
+                    (map pathname-strip-directory eggs)))
+           (car eggs)))
+        (else
+         (error "Invalid egg file" source))))
+
+(define (usage n)
   (with-output-to-port (current-error-port)
     (lambda ()
-      (print "Usage: " (car (argv)) " [-v] input.scm > output.nix")
+      (print "Usage: " (car (argv)) " [-v] file > output.nix")
       (newline)
       (print (args:usage opts))
       (print "Report bugs to moritz@tarn-vedra.de")))
-  (exit 1))
+  (exit n))
 
 (define opts
   (list (args:make-option
@@ -340,18 +369,19 @@ exec csi -s "$0" "$@"
          (set! verbose? #t))
         (args:make-option
          (h help) #:none "Display this text"
-         (usage))))
+         (usage 0))))
 
-(receive (options operands)
-         (args:parse (command-line-arguments) opts)
-         (match operands
-                (("-")
-                 (write-nix-file (read-list)))
-                ((file)
-                 (write-nix-file (call-with-input-file file read-list)))
-                (_
-                 (usage))))
+(define (main args)
+  (receive (options operands) (args:parse args opts)
+    (match operands
+      (("-")
+       (write-nix-file (read-dependencies)))
+      ((input)
+       (write-nix-file (call-with-input-file (locate-egg-file input) read-dependencies)))
+      (else
+       (usage 1)))))
 
-
+#+compiling
+(main (command-line-arguments))
 
 )

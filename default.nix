@@ -9,6 +9,6 @@ pkgs.eggDerivation {
 
   name = "egg2nix-0.4";
   buildInputs = with eggs; [
-    matchable http-client args
+    args matchable srfi-1
   ];
 }

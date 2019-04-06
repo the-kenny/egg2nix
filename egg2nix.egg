@@ -2,5 +2,6 @@
  (author "Moritz Ulrich, Moritz Heidkamp")
  (category tools)
  (license "BSD")
- (dependencies args matchable)
+ (dependencies args matchable srfi-1)
+ (test-dependencies test)
  (components (program egg2nix)))
