@@ -5,7 +5,7 @@ before_install:
   - sudo wget -qO- https://pkg.musl.cc/chicken-5.0.0/x86_64-linux-musl.tgz | sudo tar --strip-components=1 -C /usr/local -xzf-
 
 install:
-  - chicken-install -no-install
+  - chicken-install -no-install -sudo
 
 script:
-  - chicken-install -test
+  - chicken-install -no-install -sudo -test
