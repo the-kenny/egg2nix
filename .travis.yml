@@ -1,6 +1,10 @@
 language: generic
 dist: xenial
 
+cache:
+  directories:
+    - /home/travis/.cache/chicken-install
+
 before_install:
   - sudo wget -qO- http://code.call-cc.org/dev-snapshots/2019/01/12/chicken-5.0.1.tar.gz | sudo tar -C /tmp -xzf-
   - sudo make PLATFORM=linux -C /tmp/chicken-5.0.1 install
