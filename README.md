@@ -6,7 +6,7 @@ cool.
 
 ## Usage
 
-`egg2nix [-v] input.scm > output.nix`
+`egg2nix [-v] file > output.nix`
 
 If you pass `-` instead of an input file, egg2nix will read from
 stdin.
