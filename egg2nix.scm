@@ -321,8 +321,10 @@ exec csi -s "$0" "$@"
   (let* ((eggs (specs->eggs specs))
          (eggs (collect-deps eggs)))
     (print "{ pkgs, stdenv }:")
-    (print "rec {")
+    (print "let")
     (print "  inherit (pkgs) eggDerivation fetchegg;")
+    (print "in")
+    (print "rec {")
     (for-each write-nix-expression eggs)
     (print "}\n")
 
