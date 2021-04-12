@@ -195,10 +195,11 @@ exec csi -s "$0" "$@"
 
 (define (all-dependencies egg eggs)
   (retrieve-egg egg)
-  (let ((deps (egg-dependencies egg)))
+  (let ((deps (map spec-name (egg-dependencies egg))))
     (egg-deps-set! egg deps)
     (fold (lambda (dep-name eggs)
-            (let ((dep (egg-ref dep-name eggs)))
+            (let* ((dep-name (spec-name dep-name))
+                   (dep (egg-ref dep-name eggs)))
               (if dep
                   eggs
                   (let ((dep (make-egg dep-name)))
@@ -228,19 +229,22 @@ exec csi -s "$0" "$@"
                        "\n      ")
    "\n    ]"))
 
+(define (spec-ref key spec)
+  (and (pair? spec)
+       (pair? (cdr spec))
+       (pair? (cadr spec))
+       (alist-ref key (cdr spec))))
+
 (define (spec-extra-deps spec)
-  (or (and (pair? spec)
-           (alist-ref 'extra-dependencies (cdr spec)))
+  (or (spec-ref 'extra-dependencies spec)
       '()))
 
-(define (spec-broken? entry)
-  (and (pair? entry)
-       (alist-ref 'broken (cdr entry))))
+(define (spec-broken? spec)
+  (spec-ref 'broken spec))
 
 (define (spec-version spec)
-  (and (pair? spec)
-       (car (or (alist-ref 'version (cdr spec))
-                '(#f)))))
+  (car (or (spec-ref 'version spec)
+           '(#f))))
 
 (define (spec-name spec)
   (if (symbol? spec)
@@ -317,8 +321,10 @@ exec csi -s "$0" "$@"
   (let* ((eggs (specs->eggs specs))
          (eggs (collect-deps eggs)))
     (print "{ pkgs, stdenv }:")
-    (print "rec {")
+    (print "let")
     (print "  inherit (pkgs) eggDerivation fetchegg;")
+    (print "in")
+    (print "rec {")
     (for-each write-nix-expression eggs)
     (print "}\n")
 
