@@ -5,48 +5,33 @@ exec csi -s "$0" "$@"
 
 (module egg2nix
 
-()
+(locate-egg-file
+ read-dependencies)
 
-(import chicken)
 (import scheme)
 (import matchable)
 
-(use posix)
-(use extras)
-(use srfi-1)
-(use http-client)
-(use uri-common)
-(use intarweb)
-(use files)
-(use data-structures)
-(use setup-api)
-(use irregex)
-(use args)
-(use ports)
+(import chicken.base)
+(import chicken.file)
+(import chicken.format)
+(import chicken.io)
+(import chicken.irregex)
+(import chicken.port)
+(import chicken.process-context)
+(import chicken.sort)
+(import chicken.string)
+(import chicken.file.posix)
+(import chicken.process)
+(import chicken.pathname)
+
+(import srfi-1)
+(import args)
 
 (define chicken-egg-builtins
   '(scheme
     r4rs
     r5rs
-    chicken
-    extras
-    data-structures
-    ports
-    irregex
-    lolevel
-    posix
-    files
-    foreign
-    ;; Note: This is included in newer chickens?
-    ;; regex
-    srfi-1
-    srfi-4
-    srfi-13
-    srfi-14
-    srfi-18
-    srfi-69
-    tcp
-    utils))
+    srfi-4))
 
 (define verbose? #f)
 
@@ -59,11 +44,13 @@ exec csi -s "$0" "$@"
 (define *cache-dir*
   (make-pathname
    (current-directory)
-   (create-directory ".egg2nix-cache")))
+   (create-directory ".egg2nix-cache-5")))
 
 (define *temp-dir*
   (create-directory
    (string-append *cache-dir* "/eggs/")))
+
+(set-environment-variable! "CHICKEN_EGG_CACHE" *temp-dir*)
 
 (define-record-type egg
   (%make-egg name name-string version deps extra-deps broken?)
@@ -87,9 +74,6 @@ exec csi -s "$0" "$@"
     (write version out))
   (display ">" out))
 
-(define henrietta-uri
-  "http://code.call-cc.org/cgi-bin/henrietta.cgi")
-
 (define known-versions
   (let ((f (make-pathname *cache-dir* "known-versions")))
     (info "Trying to read cached versions from ~s" f)
@@ -102,14 +86,38 @@ exec csi -s "$0" "$@"
       ;; TODO: Add error handling
       (begin
         (info "Retrieving versions of ~a" egg-name)
-        (call-with-input-request
-         ;; NOTE: We don't use proper URL encoding here because henrietta doesn't properly decode it either
-         (uri-reference (string-append henrietta-uri "?name=" (symbol->string egg-name) "&listversions=1"))
-         #f
-         (lambda (in)
-           (let ((versions (string-split (read-string #f in) "\n")))
-             (set! known-versions (cons (cons egg-name versions) known-versions))
-             versions))))))
+        (receive (in out pid)
+            (process "chicken-install"
+                     (list "-list-versions" (symbol->string egg-name)))
+          (let ((versions (cdr (string-split (read-line in) " "))))
+            (close-input-port out)
+            (receive (_ normal-exit? exit-code)
+                (process-wait pid)
+              (if (and normal-exit? (zero? exit-code))
+                  (begin
+                    (set! known-versions
+                      (cons (cons egg-name versions) known-versions))
+                    versions)
+                  (error "list-versions failed"))))))))
+
+(define (version>=? v1 v2)
+  (define (version->list v)
+    (map (lambda (x) (or (string->number x) x))
+	       (irregex-split "[-\\._]" (->string v))))
+  (let loop ((p1 (version->list v1))
+	           (p2 (version->list v2)))
+    (cond ((null? p1) (null? p2))
+	        ((null? p2))
+	        ((number? (car p1))
+	         (and (number? (car p2))
+		            (or (> (car p1) (car p2))
+		                (and (= (car p1) (car p2))
+			                   (loop (cdr p1) (cdr p2))))))
+	        ((number? (car p2)))
+	        ((string>? (car p1) (car p2)))
+	        (else
+	         (and (string=? (car p1) (car p2))
+		            (loop (cdr p1) (cdr p2)))))))
 
 (define (latest-version egg-name)
   (and-let* ((versions (all-versions egg-name))
@@ -120,8 +128,11 @@ exec csi -s "$0" "$@"
   (string-append *temp-dir*
                  (egg-name-string egg)
                  "-" (or (egg-version egg)
-                         (latest-version egg))
+                         (latest-version (egg-name egg)))
                  "/" ))
+
+(define egg-meta-files
+  '("STATUS" "TIMESTAMP"))
 
 (define (chicken-install-retrieve name version)
   (let ((name+version (if version
@@ -137,7 +148,11 @@ exec csi -s "$0" "$@"
                           (let ((dir (string-append name "-" version)))
                             (when (directory-exists? dir)
                                   (delete-directory dir #t))
-                            (rename-file name dir))
+                            (rename-file name dir)
+                            (map (lambda (n)
+                                   (delete-file
+                                    (make-pathname dir n)))
+                                 egg-meta-files))
                           #t)))))
 
 (define (nix-hash egg)
@@ -161,7 +176,7 @@ exec csi -s "$0" "$@"
 (define (egg-meta egg)
   (let ((meta-file (make-pathname (local-egg-path egg)
                                   (egg-name-string egg)
-                                  "meta")))
+                                  "egg")))
     (call-with-input-file meta-file read)))
 
 (define (egg-ref name eggs)
@@ -170,18 +185,21 @@ exec csi -s "$0" "$@"
         eggs))
 
 (define (egg-dependencies egg)
-  (let ((meta (egg-meta egg)))
-    (remove (lambda (dep) (member dep chicken-egg-builtins))
-            (map spec-name
-                 (append (or (alist-ref 'depends meta) '())
-                         (or (alist-ref 'needs meta) '()))))))
+  (egg-meta-dependencies (egg-meta egg)))
+
+(define (egg-meta-dependencies meta)
+    (remove (lambda (dep)
+              (memq (spec-name dep) chicken-egg-builtins))
+            (append (alist-ref 'dependencies meta eq? '())
+                    (alist-ref 'build-dependencies meta eq? '()))))
 
 (define (all-dependencies egg eggs)
   (retrieve-egg egg)
-  (let ((deps (egg-dependencies egg)))
+  (let ((deps (map spec-name (egg-dependencies egg))))
     (egg-deps-set! egg deps)
     (fold (lambda (dep-name eggs)
-            (let ((dep (egg-ref dep-name eggs)))
+            (let* ((dep-name (spec-name dep-name))
+                   (dep (egg-ref dep-name eggs)))
               (if dep
                   eggs
                   (let ((dep (make-egg dep-name)))
@@ -211,19 +229,22 @@ exec csi -s "$0" "$@"
                        "\n      ")
    "\n    ]"))
 
+(define (spec-ref key spec)
+  (and (pair? spec)
+       (pair? (cdr spec))
+       (pair? (cadr spec))
+       (alist-ref key (cdr spec))))
+
 (define (spec-extra-deps spec)
-  (or (and (pair? spec)
-           (alist-ref 'extra-dependencies (cdr spec)))
+  (or (spec-ref 'extra-dependencies spec)
       '()))
 
-(define (spec-broken? entry)
-  (and (pair? entry)
-       (alist-ref 'broken (cdr entry))))
+(define (spec-broken? spec)
+  (spec-ref 'broken spec))
 
 (define (spec-version spec)
-  (and (pair? spec)
-       (car (or (alist-ref 'version (cdr spec))
-                '(#f)))))
+  (car (or (spec-ref 'version spec)
+           '(#f))))
 
 (define (spec-name spec)
   (if (symbol? spec)
@@ -300,8 +321,10 @@ exec csi -s "$0" "$@"
   (let* ((eggs (specs->eggs specs))
          (eggs (collect-deps eggs)))
     (print "{ pkgs, stdenv }:")
-    (print "rec {")
+    (print "let")
     (print "  inherit (pkgs) eggDerivation fetchegg;")
+    (print "in")
+    (print "rec {")
     (for-each write-nix-expression eggs)
     (print "}\n")
 
@@ -312,14 +335,39 @@ exec csi -s "$0" "$@"
           (info "writing versions to cache at ~s" f)
           (write known-versions out))))))
 
-(define (usage)
+(define (egg-meta? expr)
+  (and (pair? expr) (every pair? expr) (assq 'components expr) #t))
+
+(define (read-dependencies #!optional (source (current-input-port)))
+  (let ((expr (read source)))
+    (cond ((eof-object? expr) '())
+          ((egg-meta? expr)
+           (egg-meta-dependencies expr))
+          (else
+           (cons expr (read-list source))))))
+
+(define (locate-egg-file #!optional (source (current-directory)))
+  (cond ((regular-file? source) source)
+        ((directory? source)
+         (let ((eggs (glob (make-pathname source "*.egg")
+                           (make-pathname source "chicken/*.egg"))))
+           (when (null? eggs)
+             (error "Egg file not found" source))
+           (when (> (length eggs) 1)
+             (error "Multiple egg files found, please specify one"
+                    (map pathname-strip-directory eggs)))
+           (car eggs)))
+        (else
+         (error "Invalid egg file" source))))
+
+(define (usage n)
   (with-output-to-port (current-error-port)
     (lambda ()
-      (print "Usage: " (car (argv)) " [-v] input.scm > output.nix")
+      (print "Usage: " (car (argv)) " [-v] file > output.nix")
       (newline)
       (print (args:usage opts))
       (print "Report bugs to moritz@tarn-vedra.de")))
-  (exit 1))
+  (exit n))
 
 (define opts
   (list (args:make-option
@@ -327,18 +375,19 @@ exec csi -s "$0" "$@"
          (set! verbose? #t))
         (args:make-option
          (h help) #:none "Display this text"
-         (usage))))
+         (usage 0))))
 
-(receive (options operands)
-         (args:parse (command-line-arguments) opts)
-         (match operands
-                (("-")
-                 (write-nix-file (read-file)))
-                ((file)
-                 (write-nix-file (read-file file)))
-                (_
-                 (usage))))
+(define (main args)
+  (receive (options operands) (args:parse args opts)
+    (match operands
+      (("-")
+       (write-nix-file (read-dependencies)))
+      ((input)
+       (write-nix-file (call-with-input-file (locate-egg-file input) read-dependencies)))
+      (else
+       (usage 1)))))
 
-
+#+compiling
+(main (command-line-arguments))
 
 )
