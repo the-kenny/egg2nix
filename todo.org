@@ -2,3 +2,4 @@
 - [ ] Always use the latest version except when there's a version specified in the egg-list
 - [X] Support reading the egg-list from stdin
 - [ ] Generate default.nix for non-egg CHICKEN apps
+- [ ] Generate `meta` sets containing e.g. `description`, `homepage`, and `license`
