@@ -276,7 +276,8 @@ exec csi -s "$0" "$@"
     (printf
      "
   ~A = eggDerivation {
-    name = \"~A-~A\";
+    pname = \"~A\";
+    version = \"~A\";
 
     src = fetchegg {
       name = \"~A\";
