@@ -1,3 +1,7 @@
+# Unmaintained
+
+🌊 Please note that I am not actively maintaining this project anymore. Forking encouraged!
+
 # egg2nix
 
 egg2nix is a tool to automatically generate nix-expressions for
